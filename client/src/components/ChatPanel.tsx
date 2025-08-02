@@ -1,16 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePlayerStore } from "../stores/playerStore";
 import { getSocket } from "../service/websocket";
 import useMessagesStore from "../stores/messagesStore";
-
-interface ChatMessage {
-  id: string;
-  playerName: string;
-  playerEmoji: string;
-  message: string;
-  timestamp: Date;
-  isMe: boolean;
-}
+import type { ChatMessage, Message } from "../types";
+import { toast } from "sonner";
 
 
 const socket = getSocket();
@@ -24,28 +17,58 @@ export function ChatPanel() {
     e.preventDefault();
     if (!message.trim() || !playerInfo) return;
 
-
-    socket.send(JSON.stringify({
-      type: "message",
-      payload: {
-        message: message.trim(),
-        playerName: playerInfo.name,
-        playerEmoji: playerInfo.emoji,
-      },
-    }));
-
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
       playerName: playerInfo.name,
       playerEmoji: playerInfo.emoji,
       message: message.trim(),
       timestamp: new Date(),
-      isMe: true,
-    };
+    }
 
-    addMessage(newMessage);
+    socket.send(JSON.stringify({
+      type: "message",
+      payload: newMessage,
+    } as Message));
+
     setMessage("");
   };
+
+  useEffect(() => {
+    if (!playerInfo) return;
+
+    function handleOpen() {
+      if (!playerInfo) return;
+      console.log("SENDING JOIN MESSAGE", playerInfo)
+      socket.send(JSON.stringify({
+        type: "join",
+        payload: {
+          id: playerInfo.id,
+          playerName: playerInfo.name,
+          playerEmoji: playerInfo.emoji,
+        }
+      } as Message))
+    }
+
+    function handleMessage(event: MessageEvent) {
+      const data = JSON.parse(event.data) as Message;
+      console.log("Message from server", data);
+
+      if (data.type === "message") {
+        const payload = data.payload as ChatMessage;
+        payload.timestamp = new Date(payload.timestamp);
+        addMessage(payload);
+      }
+    }
+
+
+    socket.addEventListener("open", handleOpen);
+    socket.addEventListener("message", handleMessage);
+
+    return () => {
+      socket.removeEventListener("message", handleMessage);
+      socket.removeEventListener("open", handleOpen);
+    };
+  }, []);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });

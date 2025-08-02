@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"server/internal"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -13,10 +15,18 @@ type WsMessage struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-type MessagePayload struct {
-	Message     string `json:"message"`
+type JoinMessagePayload struct {
+	Id          string `json:"id"`
 	PlayerName  string `json:"playerName"`
 	PlayerEmoji string `json:"playerEmoji"`
+}
+
+type MessagePayload struct {
+	Id          string    `json:"id"`
+	Message     string    `json:"message"`
+	PlayerName  string    `json:"playerName"`
+	PlayerEmoji string    `json:"playerEmoji"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 var upgrader = websocket.Upgrader{
@@ -33,7 +43,7 @@ func parseWebsocketMessage[T any](websocketMessage []byte) (T, error) {
 	return msg, nil
 }
 
-func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Error upgrading to WebSocket:", err)
@@ -42,7 +52,21 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("WebSocket connection established")
 
-	defer conn.Close()
+	// initialize player
+	player := internal.Player{
+		Id:          "",
+		Conn:        conn,
+		PlayerName:  "",
+		PlayerEmoji: "",
+	}
+	defer func() {
+		log.Println("Player left", player.Id, player.PlayerName, player.PlayerEmoji)
+		if player.Id != "" {
+			log.Println("Player left", player)
+			hub.Unregister <- &player
+		}
+		conn.Close()
+	}()
 
 	for {
 		_, websocketMessage, err := conn.ReadMessage()
@@ -60,6 +84,20 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch msg.Type {
+		case "join":
+			payload, err := parseWebsocketMessage[JoinMessagePayload](msg.Payload)
+			if err != nil {
+				log.Println("Error parsing join payload:", err)
+				continue
+			}
+			// fill missing data
+			log.Println("Player joined with id", payload.Id, payload.PlayerName, payload.PlayerEmoji)
+			player.Id = payload.Id
+			player.PlayerName = payload.PlayerName
+			player.PlayerEmoji = payload.PlayerEmoji
+			// register player with the client
+			hub.Register <- &player
+
 		case "message":
 			payload, err := parseWebsocketMessage[MessagePayload](msg.Payload)
 			if err != nil {
@@ -67,7 +105,8 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			// log.Printf("Parsed message payload: %+v", payload)
-			log.Println("Player Name: ", payload.PlayerName)
+			log.Printf("Player Name %s just sent a message\n", payload.PlayerName)
+			hub.Broadcast <- websocketMessage
 		default:
 			log.Printf("Unknown message type: %s", msg.Type)
 		}

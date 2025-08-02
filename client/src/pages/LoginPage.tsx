@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePlayerStore } from "../stores/playerStore";
+import { v4 as uuidv4 } from "uuid";
 
 const emojis = [
   "😀",
@@ -145,7 +146,7 @@ export function LoginPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      setPlayerInfo({ name: name.trim(), emoji: selectedEmoji });
+      setPlayerInfo({ name: name.trim(), emoji: selectedEmoji, id: uuidv4() });
       navigate("/play");
     }
   };
@@ -211,8 +212,8 @@ export function LoginPage() {
                           setShowEmojiPicker(false);
                         }}
                         className={`text-2xl p-2 rounded-lg hover:bg-gray-100 transition-colors ${selectedEmoji === emoji
-                            ? "bg-blue-100 ring-2 ring-blue-500"
-                            : ""
+                          ? "bg-blue-100 ring-2 ring-blue-500"
+                          : ""
                           }`}
                       >
                         {emoji}

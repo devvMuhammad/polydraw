@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 interface PlayerInfo {
+  id: string;
   name: string;
   emoji: string;
 }
