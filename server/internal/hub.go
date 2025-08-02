@@ -42,7 +42,22 @@ func (h *Hub) Run() {
 			delete(h.Players, disconnectedConnection.Conn)
 		case message := <-h.Broadcast:
 			fmt.Println("Broadcasting message")
-			for conn := range h.Players {
+
+			// unmarshal message
+			var messageData map[string]any
+			if err := json.Unmarshal(message, &messageData); err != nil {
+				fmt.Printf("Error unmarshalling message: %v\n", err)
+				continue
+			}
+
+			for conn, player := range h.Players {
+				// skip if message is a draw message or player join message and the player is the one who did it (handling it special for this case)
+				if messageData["type"] == "draw" || messageData["type"] == "player_join" {
+					playerId := messageData["payload"].(map[string]any)["id"].(string)
+					if playerId == player.Id {
+						continue
+					}
+				}
 				if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
 					fmt.Printf("Error broadcasting to connection: %v\n", err)
 					// Auto cleanup on write error
@@ -71,9 +86,9 @@ func (h *Hub) GetActivePlayers() []Player {
 func (h *Hub) BroadcastPlayerLeave(player *Player) {
 	if player.Id != "" && player.PlayerName != "" && player.PlayerEmoji != "" {
 		// Create player leave event
-		leaveEventData := map[string]interface{}{
+		leaveEventData := map[string]any{
 			"type": "player_leave",
-			"payload": map[string]interface{}{
+			"payload": map[string]any{
 				"id":          player.Id,
 				"playerName":  player.PlayerName,
 				"playerEmoji": player.PlayerEmoji,
@@ -87,5 +102,51 @@ func (h *Hub) BroadcastPlayerLeave(player *Player) {
 		}
 
 		h.Broadcast <- leaveEventBytes
+	}
+}
+
+func (h *Hub) BroadcastPlayerJoin(player *Player) {
+	if player.Id != "" && player.PlayerName != "" && player.PlayerEmoji != "" {
+		// Create player join event
+		joinEventData := map[string]any{
+			"type": "player_join",
+			"payload": map[string]any{
+				"id":          player.Id,
+				"playerName":  player.PlayerName,
+				"playerEmoji": player.PlayerEmoji,
+			},
+		}
+
+		joinEventBytes, err := json.Marshal(joinEventData)
+		if err != nil {
+			fmt.Printf("Error marshaling join event: %v\n", err)
+			return
+		}
+
+		h.Broadcast <- joinEventBytes
+	}
+}
+
+func (h *Hub) BroadcastDraw(player *Player, x float64, y float64) {
+	if player.Id != "" && player.PlayerName != "" && player.PlayerEmoji != "" {
+		// Create draw event
+		drawEventData := map[string]any{
+			"type": "draw",
+			"payload": map[string]any{
+				"id":          player.Id,
+				"playerName":  player.PlayerName,
+				"playerEmoji": player.PlayerEmoji,
+				"x":           x,
+				"y":           y,
+			},
+		}
+
+		drawEventBytes, err := json.Marshal(drawEventData)
+		if err != nil {
+			fmt.Printf("Error marshaling draw event: %v\n", err)
+			return
+		}
+
+		h.Broadcast <- drawEventBytes
 	}
 }

@@ -35,6 +35,11 @@ type PlayerEventPayload struct {
 	PlayerEmoji string `json:"playerEmoji"`
 }
 
+type DrawMessagePayload struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	CheckOrigin:     func(r *http.Request) bool { return true },
@@ -105,20 +110,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 			player.PlayerName = payload.PlayerName
 			player.PlayerEmoji = payload.PlayerEmoji
 
-			// Broadcast player join event to all clients
-			joinEvent := WsMessage{
-				Type: "player_join",
-				Payload: json.RawMessage(func() []byte {
-					data, _ := json.Marshal(PlayerEventPayload{
-						Id:          payload.Id,
-						PlayerName:  payload.PlayerName,
-						PlayerEmoji: payload.PlayerEmoji,
-					})
-					return data
-				}()),
-			}
-			joinEventBytes, _ := json.Marshal(joinEvent)
-			hub.Broadcast <- joinEventBytes
+			hub.BroadcastPlayerJoin(&player)
 
 		case "message":
 			payload, err := parseWebsocketMessage[MessagePayload](msg.Payload)
@@ -129,6 +121,13 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 			// log.Printf("Parsed message payload: %+v", payload)
 			log.Printf("Player Name %s just sent a message\n", payload.PlayerName)
 			hub.Broadcast <- websocketMessage
+		case "draw":
+			payload, err := parseWebsocketMessage[DrawMessagePayload](msg.Payload)
+			if err != nil {
+				log.Println("Error parsing draw payload:", err)
+				continue
+			}
+			hub.BroadcastDraw(&player, payload.X, payload.Y)
 		default:
 			log.Printf("Unknown message type: %s", msg.Type)
 		}

@@ -1,10 +1,18 @@
 import { useRef, useEffect, useState } from "react";
+import { getSocket, sendMessage } from "../service/websocket";
+import type { Message } from "../types";
+import { usePlayerStore } from "../stores/playerStore";
+import throttle from 'lodash/throttle';
+
+
+const socket = getSocket();
 
 export function useCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [selectedColor, setSelectedColor] = useState("#FF6B6B");
   const [strokeWidth, setStrokeWidth] = useState(5);
+  const { playerInfo } = usePlayerStore();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -25,18 +33,36 @@ export function useCanvas() {
       };
       ctx.beginPath();
       ctx.moveTo(coords.x, coords.y);
+      // ctx.stroke();
       setIsDrawing(true);
     };
 
+    const sendDrawMessageThrottled = throttle((coords: { x: number; y: number }) => {
+      if (!playerInfo) return;
+      sendMessage({
+        type: "draw",
+        payload: {
+          x: coords.x,
+          y: coords.y,
+          id: playerInfo.id,
+          playerName: playerInfo.name,
+          playerEmoji: playerInfo.emoji,
+        },
+      } as Message);
+    }, 0);
+
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDrawing) return;
+      if (!isDrawing || !playerInfo) return;
       const rect = canvas.getBoundingClientRect();
       const coords = {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
       };
+
       ctx.lineTo(coords.x, coords.y);
       ctx.stroke();
+      // throttle the message sending sending using loadash
+      sendDrawMessageThrottled(coords);
     };
 
     const handleMouseUp = () => {
@@ -45,6 +71,19 @@ export function useCanvas() {
       setIsDrawing(false);
     };
 
+    function handleDraw(event: MessageEvent) {
+      const data = JSON.parse(event.data) as Message;
+      console.log("Draw event", data);
+      if (data.type === "draw" && ctx) {
+        const payload = data.payload;
+        ctx.beginPath();
+        ctx.lineTo(payload.x, payload.y);
+        ctx.stroke();
+        // ctx.moveTo(payload.x, payload.y);
+      }
+    }
+
+    socket.addEventListener("message", handleDraw);
     canvas.addEventListener("mousedown", handleMouseDown);
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("mouseup", handleMouseUp);
@@ -55,6 +94,7 @@ export function useCanvas() {
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("mouseup", handleMouseUp);
       canvas.removeEventListener("mouseleave", handleMouseUp);
+      socket.removeEventListener("message", handleDraw);
     };
   }, [isDrawing, selectedColor, strokeWidth]);
 
