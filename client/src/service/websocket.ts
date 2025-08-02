@@ -14,3 +14,10 @@ export function getSocket() {
   return ws;
 }
 
+export function closeSocket() {
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+}
+
