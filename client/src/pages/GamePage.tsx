@@ -5,6 +5,7 @@ import { ChatPanel } from "../components/ChatPanel";
 import { PlayerList } from "../components/PlayerList";
 import { Toaster } from "sonner";
 
+
 export function GamePage() {
   const {
     canvasRef,
