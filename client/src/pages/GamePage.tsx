@@ -4,9 +4,12 @@ import { CurrentSelection } from "../components/CurrentSelection";
 import { ChatPanel } from "../components/ChatPanel";
 import { PlayerList } from "../components/PlayerList";
 import { Toaster } from "sonner";
+import { usePlayerStore } from "../stores/playerStore";
+import { LogoutButton } from "../components/LogoutButton";
 
 
 export function GamePage() {
+  const { playerInfo } = usePlayerStore();
   const {
     canvasRef,
     selectedColor,
@@ -21,6 +24,20 @@ export function GamePage() {
   return (
     <main className="bg-gray-100 min-h-screen p-4">
       <Toaster />
+
+      {/* Header with player info and logout */}
+      <div className="mb-6 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">{playerInfo?.emoji}</span>
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">
+              Welcome, {playerInfo?.name}!
+            </h1>
+            <p className="text-sm text-gray-600">Drawing with friends</p>
+          </div>
+        </div>
+        <LogoutButton />
+      </div>
 
       {/* Center the main content */}
       <div className="flex items-center justify-center min-h-full">

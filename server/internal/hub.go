@@ -14,7 +14,7 @@ type Player struct {
 }
 
 type Hub struct {
-	Players    map[string]*Player
+	Players    map[*websocket.Conn]*Player
 	Broadcast  chan []byte
 	Register   chan *Player
 	Unregister chan *Player
@@ -22,7 +22,7 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
-		Players:    make(map[string]*Player),
+		Players:    make(map[*websocket.Conn]*Player),
 		Broadcast:  make(chan []byte),
 		Register:   make(chan *Player),
 		Unregister: make(chan *Player),
@@ -35,14 +35,18 @@ func (h *Hub) Run() {
 		select {
 		case newConnection := <-h.Register:
 			fmt.Println("New connection registered")
-			h.Players[newConnection.Id] = newConnection
+			h.Players[newConnection.Conn] = newConnection
 		case disconnectedConnection := <-h.Unregister:
 			fmt.Println("Connection unregistered")
-			delete(h.Players, disconnectedConnection.Id)
+			delete(h.Players, disconnectedConnection.Conn)
 		case message := <-h.Broadcast:
 			fmt.Println("Broadcasting message")
-			for _, player := range h.Players {
-				player.Conn.WriteMessage(websocket.TextMessage, message)
+			for conn := range h.Players {
+				if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
+					fmt.Printf("Error broadcasting to connection: %v\n", err)
+					// Auto cleanup on write error
+					delete(h.Players, conn)
+				}
 			}
 		}
 	}

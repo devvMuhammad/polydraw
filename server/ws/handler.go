@@ -59,12 +59,13 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 		PlayerName:  "",
 		PlayerEmoji: "",
 	}
+
+	// Register immediately - no conditions needed
+	hub.Register <- &player
+
 	defer func() {
-		log.Println("Player left", player.Id, player.PlayerName, player.PlayerEmoji)
-		if player.Id != "" {
-			log.Println("Player left", player)
-			hub.Unregister <- &player
-		}
+		log.Println("Connection closing for player:", player.Id, player.PlayerName, player.PlayerEmoji)
+		hub.Unregister <- &player
 		conn.Close()
 	}()
 
@@ -95,8 +96,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 			player.Id = payload.Id
 			player.PlayerName = payload.PlayerName
 			player.PlayerEmoji = payload.PlayerEmoji
-			// register player with the client
-			hub.Register <- &player
 
 		case "message":
 			payload, err := parseWebsocketMessage[MessagePayload](msg.Payload)
