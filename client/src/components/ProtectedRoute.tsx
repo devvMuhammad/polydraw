@@ -1,12 +1,12 @@
 import { Navigate } from "react-router-dom";
-import { usePlayer } from "../context/PlayerContext";
+import { usePlayerStore } from "../stores/playerStore";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { playerInfo } = usePlayer();
+  const { playerInfo } = usePlayerStore();
 
   if (!playerInfo) {
     return <Navigate to="/" replace />;

@@ -2,10 +2,10 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "./pages/LoginPage";
 import { GamePage } from "./pages/GamePage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { usePlayer } from "./context/PlayerContext";
+import { usePlayerStore } from "./stores/playerStore";
 
 export default function App() {
-  const { playerInfo } = usePlayer();
+  const { playerInfo } = usePlayerStore();
 
   return (
     <Routes>

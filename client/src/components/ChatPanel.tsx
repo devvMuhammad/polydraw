@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { usePlayer } from "../context/PlayerContext";
+import { usePlayerStore } from "../stores/playerStore";
 
 interface ChatMessage {
   id: string;
@@ -11,45 +11,12 @@ interface ChatMessage {
 }
 
 // Dummy chat messages for demonstration
-const dummyMessages: ChatMessage[] = [
-  {
-    id: "1",
-    playerName: "Player 1",
-    playerEmoji: "🎨",
-    message: "Hey everyone! Ready to draw?",
-    timestamp: new Date(Date.now() - 300000),
-    isMe: false,
-  },
-  {
-    id: "2",
-    playerName: "Player 2",
-    playerEmoji: "🖌️",
-    message: "This is so much fun! Love the collaborative aspect.",
-    timestamp: new Date(Date.now() - 240000),
-    isMe: false,
-  },
-  {
-    id: "3",
-    playerName: "You",
-    playerEmoji: "😀",
-    message: "Great work on that drawing!",
-    timestamp: new Date(Date.now() - 180000),
-    isMe: true,
-  },
-  {
-    id: "4",
-    playerName: "Player 1",
-    playerEmoji: "🎨",
-    message: "Thanks! Should we try a landscape next?",
-    timestamp: new Date(Date.now() - 120000),
-    isMe: false,
-  },
-];
+const dummyMessages: ChatMessage[] = []
 
 export function ChatPanel() {
   const [messages, setMessages] = useState<ChatMessage[]>(dummyMessages);
   const [newMessage, setNewMessage] = useState("");
-  const { playerInfo } = usePlayer();
+  const { playerInfo } = usePlayerStore();
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,11 +57,10 @@ export function ChatPanel() {
               className={`max-w-[80%] ${message.isMe ? "order-2" : "order-1"}`}
             >
               <div
-                className={`rounded-2xl px-4 py-2 ${
-                  message.isMe
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-100 text-gray-800"
-                }`}
+                className={`rounded-2xl px-4 py-2 ${message.isMe
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-100 text-gray-800"
+                  }`}
               >
                 {!message.isMe && (
                   <div className="flex items-center gap-2 mb-1">
@@ -107,9 +73,8 @@ export function ChatPanel() {
                 <p className="text-sm leading-relaxed">{message.message}</p>
               </div>
               <div
-                className={`text-xs text-gray-500 mt-1 ${
-                  message.isMe ? "text-right" : "text-left"
-                }`}
+                className={`text-xs text-gray-500 mt-1 ${message.isMe ? "text-right" : "text-left"
+                  }`}
               >
                 {formatTime(message.timestamp)}
               </div>
@@ -126,7 +91,7 @@ export function ChatPanel() {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-black"
             maxLength={200}
           />
           <button

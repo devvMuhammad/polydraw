@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { usePlayer } from "../context/PlayerContext";
+import { usePlayerStore } from "../stores/playerStore";
 
 const emojis = [
   "😀",
@@ -139,7 +139,7 @@ export function LoginPage() {
   const [name, setName] = useState("");
   const [selectedEmoji, setSelectedEmoji] = useState("😀");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const { setPlayerInfo } = usePlayer();
+  const { setPlayerInfo } = usePlayerStore();
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -210,11 +210,10 @@ export function LoginPage() {
                           setSelectedEmoji(emoji);
                           setShowEmojiPicker(false);
                         }}
-                        className={`text-2xl p-2 rounded-lg hover:bg-gray-100 transition-colors ${
-                          selectedEmoji === emoji
+                        className={`text-2xl p-2 rounded-lg hover:bg-gray-100 transition-colors ${selectedEmoji === emoji
                             ? "bg-blue-100 ring-2 ring-blue-500"
                             : ""
-                        }`}
+                          }`}
                       >
                         {emoji}
                       </button>

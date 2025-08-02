@@ -1,4 +1,4 @@
-import { usePlayer } from "../context/PlayerContext";
+import { usePlayerStore } from "../stores/playerStore";
 
 interface Player {
   id: string;
@@ -7,17 +7,10 @@ interface Player {
   isOnline: boolean;
 }
 
-// Dummy connected players for demonstration
-const connectedPlayers: Player[] = [
-  { id: "1", name: "Alex Johnson", emoji: "🎨", isOnline: true },
-  { id: "2", name: "Maria Garcia", emoji: "🖌️", isOnline: true },
-  { id: "3", name: "John Smith", emoji: "🎭", isOnline: false },
-  { id: "4", name: "Sarah Wilson", emoji: "🌟", isOnline: true },
-  { id: "5", name: "Mike Brown", emoji: "🚀", isOnline: true },
-];
+const connectedPlayers: Player[] = [];
 
 export function PlayerList() {
-  const { playerInfo } = usePlayer();
+  const { playerInfo } = usePlayerStore();
 
   const onlinePlayers = connectedPlayers.filter((p) => p.isOnline);
   const totalPlayers = onlinePlayers.length + (playerInfo ? 1 : 0); // +1 for current user
@@ -27,7 +20,7 @@ export function PlayerList() {
       {/* Header */}
       <div className="p-4 bg-gray-50 border-b border-gray-200">
         <h2 className="text-gray-700 font-bold text-lg flex items-center justify-between">
-          Players
+          Active Players
           <span className="bg-blue-500 text-white text-sm font-bold px-3 py-1 rounded-full">
             {totalPlayers}
           </span>
@@ -66,14 +59,12 @@ export function PlayerList() {
               </div>
               <div className="flex items-center gap-2">
                 <div
-                  className={`w-3 h-3 rounded-full ${
-                    player.isOnline ? "bg-green-500" : "bg-gray-400"
-                  }`}
+                  className={`w-3 h-3 rounded-full ${player.isOnline ? "bg-green-500" : "bg-gray-400"
+                    }`}
                 ></div>
                 <span
-                  className={`text-sm font-medium ${
-                    player.isOnline ? "text-green-600" : "text-gray-500"
-                  }`}
+                  className={`text-sm font-medium ${player.isOnline ? "text-green-600" : "text-gray-500"
+                    }`}
                 >
                   {player.isOnline ? "Online" : "Offline"}
                 </span>
