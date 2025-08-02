@@ -1,15 +1,16 @@
+import { useEffect } from "react";
 import { useCanvas } from "../hooks/useCanvas";
 import { Toolbar } from "../components/Toolbar";
 import { CurrentSelection } from "../components/CurrentSelection";
 import { ChatPanel } from "../components/ChatPanel";
 import { PlayerList } from "../components/PlayerList";
 import { Toaster } from "sonner";
-import { usePlayerStore } from "../stores/playerStore";
+
 import { LogoutButton } from "../components/LogoutButton";
+import { getSocket } from "../service/websocket";
 
 
 export function GamePage() {
-  const { playerInfo } = usePlayerStore();
   const {
     canvasRef,
     selectedColor,
@@ -20,6 +21,11 @@ export function GamePage() {
     copyCanvas,
     downloadCanvas,
   } = useCanvas();
+
+  // Initialize websocket connection when game page loads
+  useEffect(() => {
+    getSocket();
+  }, []);
 
   return (
     <main className="bg-gray-100 min-h-screen p-4">

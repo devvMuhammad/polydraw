@@ -8,6 +8,20 @@ export type Message = {
         playerName: string;
         playerEmoji: string;
     }
+} | {
+    type: "player_join";
+    payload: {
+        id: string;
+        playerName: string;
+        playerEmoji: string;
+    }
+} | {
+    type: "player_leave";
+    payload: {
+        id: string;
+        playerName: string;
+        playerEmoji: string;
+    }
 };
 
 export interface ChatMessage {

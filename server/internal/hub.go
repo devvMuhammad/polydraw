@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/gorilla/websocket"
@@ -49,5 +50,42 @@ func (h *Hub) Run() {
 				}
 			}
 		}
+	}
+}
+
+func (h *Hub) GetActivePlayers() []Player {
+	var players []Player
+	for _, player := range h.Players {
+		// Only include players that have completed the join process
+		if player.Id != "" && player.PlayerName != "" && player.PlayerEmoji != "" {
+			players = append(players, Player{
+				Id:          player.Id,
+				PlayerName:  player.PlayerName,
+				PlayerEmoji: player.PlayerEmoji,
+			})
+		}
+	}
+	return players
+}
+
+func (h *Hub) BroadcastPlayerLeave(player *Player) {
+	if player.Id != "" && player.PlayerName != "" && player.PlayerEmoji != "" {
+		// Create player leave event
+		leaveEventData := map[string]interface{}{
+			"type": "player_leave",
+			"payload": map[string]interface{}{
+				"id":          player.Id,
+				"playerName":  player.PlayerName,
+				"playerEmoji": player.PlayerEmoji,
+			},
+		}
+
+		leaveEventBytes, err := json.Marshal(leaveEventData)
+		if err != nil {
+			fmt.Printf("Error marshaling leave event: %v\n", err)
+			return
+		}
+
+		h.Broadcast <- leaveEventBytes
 	}
 }

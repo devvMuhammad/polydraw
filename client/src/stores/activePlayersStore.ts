@@ -2,8 +2,8 @@ import { create } from "zustand";
 
 interface ActivePlayer {
     id: string;
-    name: string;
-    emoji: string;
+    playerName: string;
+    playerEmoji: string;
 }
 
 interface ActivePlayersState {

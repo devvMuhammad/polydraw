@@ -21,6 +21,9 @@ func main() {
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		ws.HandleWebSocket(w, r, hub)
 	})
+	http.HandleFunc("/players", func(w http.ResponseWriter, r *http.Request) {
+		ws.HandleGetPlayers(w, r, hub)
+	})
 
 	log.Printf("Server is running on port %s\n", PORT)
 	err := http.ListenAndServe(PORT, nil)

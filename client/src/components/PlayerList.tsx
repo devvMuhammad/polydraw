@@ -1,19 +1,37 @@
+import { useEffect, useState } from "react";
 import { usePlayerStore } from "../stores/playerStore";
-
-interface Player {
-  id: string;
-  name: string;
-  emoji: string;
-  isOnline: boolean;
-}
-
-const connectedPlayers: Player[] = [];
+import useActivePlayersStore from "../stores/activePlayersStore";
+import { PlayerListSkeleton } from "./PlayerListSkeleton";
 
 export function PlayerList() {
   const { playerInfo } = usePlayerStore();
+  const { activePlayers, setActivePlayers } = useActivePlayersStore();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const onlinePlayers = connectedPlayers.filter((p) => p.isOnline);
-  const totalPlayers = onlinePlayers.length + (playerInfo ? 1 : 0); // +1 for current user
+  useEffect(() => {
+    // Fetch active players on component mount
+    const fetchActivePlayers = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/players");
+        if (response.ok) {
+          const players = await response.json();
+          setActivePlayers(players || []);
+        }
+      } catch (error) {
+        console.error("Error fetching active players:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchActivePlayers();
+  }, [setActivePlayers]);
+
+  const totalPlayers = activePlayers.length;
+
+  if (isLoading) {
+    return <PlayerListSkeleton />;
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-lg h-full overflow-hidden flex flex-col">
@@ -48,25 +66,19 @@ export function PlayerList() {
             </div>
           )}
 
-          {connectedPlayers.map((player) => (
+          {activePlayers.filter((player) => player.id !== playerInfo?.id).map((player) => (
             <div
               key={player.id}
               className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50"
             >
-              <span className="text-xl">{player.emoji}</span>
+              <span className="text-xl">{player.playerEmoji}</span>
               <div className="flex-1">
-                <div className="font-medium text-gray-800">{player.name}</div>
+                <div className="font-medium text-gray-800">{player.playerName}</div>
               </div>
               <div className="flex items-center gap-2">
-                <div
-                  className={`w-3 h-3 rounded-full ${player.isOnline ? "bg-green-500" : "bg-gray-400"
-                    }`}
-                ></div>
-                <span
-                  className={`text-sm font-medium ${player.isOnline ? "text-green-600" : "text-gray-500"
-                    }`}
-                >
-                  {player.isOnline ? "Online" : "Offline"}
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <span className="text-sm font-medium text-green-600">
+                  Online
                 </span>
               </div>
             </div>

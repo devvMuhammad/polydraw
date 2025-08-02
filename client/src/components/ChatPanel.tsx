@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
 import { usePlayerStore } from "../stores/playerStore";
-import { getSocket } from "../service/websocket";
+import { getSocket, sendMessage } from "../service/websocket";
 import useMessagesStore from "../stores/messagesStore";
 import type { ChatMessage, Message } from "../types";
-import { toast } from "sonner";
-
-
-const socket = getSocket();
 
 export function ChatPanel() {
-  const { messages, addMessage } = useMessagesStore();
+  const { messages } = useMessagesStore();
   const [message, setMessage] = useState("");
   const { playerInfo } = usePlayerStore();
 
@@ -25,10 +21,10 @@ export function ChatPanel() {
       timestamp: new Date(),
     }
 
-    socket.send(JSON.stringify({
+    sendMessage({
       type: "message",
       payload: newMessage,
-    } as Message));
+    } as Message);
 
     setMessage("");
   };
@@ -36,39 +32,27 @@ export function ChatPanel() {
   useEffect(() => {
     if (!playerInfo) return;
 
+    const socket = getSocket();
+
     function handleOpen() {
       if (!playerInfo) return;
       console.log("SENDING JOIN MESSAGE", playerInfo)
-      socket.send(JSON.stringify({
+      sendMessage({
         type: "join",
         payload: {
           id: playerInfo.id,
           playerName: playerInfo.name,
           playerEmoji: playerInfo.emoji,
         }
-      } as Message))
+      } as Message);
     }
-
-    function handleMessage(event: MessageEvent) {
-      const data = JSON.parse(event.data) as Message;
-      console.log("Message from server", data);
-
-      if (data.type === "message") {
-        const payload = data.payload as ChatMessage;
-        payload.timestamp = new Date(payload.timestamp);
-        addMessage(payload);
-      }
-    }
-
 
     socket.addEventListener("open", handleOpen);
-    socket.addEventListener("message", handleMessage);
 
     return () => {
-      socket.removeEventListener("message", handleMessage);
       socket.removeEventListener("open", handleOpen);
     };
-  }, []);
+  }, [playerInfo]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });

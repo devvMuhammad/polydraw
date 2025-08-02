@@ -29,6 +29,12 @@ type MessagePayload struct {
 	Timestamp   time.Time `json:"timestamp"`
 }
 
+type PlayerEventPayload struct {
+	Id          string `json:"id"`
+	PlayerName  string `json:"playerName"`
+	PlayerEmoji string `json:"playerEmoji"`
+}
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	CheckOrigin:     func(r *http.Request) bool { return true },
@@ -65,6 +71,8 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 
 	defer func() {
 		log.Println("Connection closing for player:", player.Id, player.PlayerName, player.PlayerEmoji)
+		// Broadcast player leave event before unregistering
+		hub.BroadcastPlayerLeave(&player)
 		hub.Unregister <- &player
 		conn.Close()
 	}()
@@ -97,6 +105,21 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 			player.PlayerName = payload.PlayerName
 			player.PlayerEmoji = payload.PlayerEmoji
 
+			// Broadcast player join event to all clients
+			joinEvent := WsMessage{
+				Type: "player_join",
+				Payload: json.RawMessage(func() []byte {
+					data, _ := json.Marshal(PlayerEventPayload{
+						Id:          payload.Id,
+						PlayerName:  payload.PlayerName,
+						PlayerEmoji: payload.PlayerEmoji,
+					})
+					return data
+				}()),
+			}
+			joinEventBytes, _ := json.Marshal(joinEvent)
+			hub.Broadcast <- joinEventBytes
+
 		case "message":
 			payload, err := parseWebsocketMessage[MessagePayload](msg.Payload)
 			if err != nil {
@@ -109,5 +132,24 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 		default:
 			log.Printf("Unknown message type: %s", msg.Type)
 		}
+	}
+}
+
+func HandleGetPlayers(w http.ResponseWriter, r *http.Request, hub *internal.Hub) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	players := hub.GetActivePlayers()
+	if err := json.NewEncoder(w).Encode(players); err != nil {
+		log.Println("Error encoding players response:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 }
