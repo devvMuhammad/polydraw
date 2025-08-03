@@ -29,10 +29,14 @@ export function ChatPanel() {
     setMessage("");
   };
 
+
+
   useEffect(() => {
     if (!playerInfo) return;
 
     const socket = getSocket();
+    console.log("SOCKET", socket)
+
 
     function handleOpen() {
       if (!playerInfo) return;

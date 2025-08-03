@@ -7,7 +7,7 @@ import { PlayerList } from "../components/PlayerList";
 import { Toaster } from "sonner";
 
 import { LogoutButton } from "../components/LogoutButton";
-import { getSocket } from "../service/websocket";
+import { usePlayerJoin } from "../hooks/usePlayerJoin";
 
 
 export function GamePage() {
@@ -22,10 +22,7 @@ export function GamePage() {
     downloadCanvas,
   } = useCanvas();
 
-  // Initialize websocket connection when game page loads
-  useEffect(() => {
-    getSocket();
-  }, []);
+  usePlayerJoin();
 
   return (
     <main className="bg-gray-100 min-h-screen p-4">
