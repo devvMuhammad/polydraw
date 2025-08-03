@@ -6,14 +6,32 @@ import type { Message, ChatMessage } from "../types";
 
 let ws: WebSocket | null = null;
 let messageHandlers: Set<(event: MessageEvent) => void> = new Set();
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
+const baseDelay = 1000;
+let isReconnecting = false;
 
-export function getSocket() {
-  if (ws) return ws;
+function getWebSocketUrl(): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = import.meta.env.VITE_WS_HOST || window.location.hostname + ':8080';
+  return `${protocol}//${host}/ws`;
+}
 
-  ws = new WebSocket("ws://localhost:8080/ws");
+function setupWebSocketHandlers() {
+  if (!ws) return;
 
-  ws.onclose = () => {
+  ws.onopen = () => {
+    console.log("Connected to server");
+    reconnectAttempts = 0;
+    isReconnecting = false;
+  };
+
+  ws.onclose = (event) => {
     console.log("Disconnected from server");
+
+    if (!event.wasClean && !isReconnecting) {
+      attemptReconnect();
+    }
   };
 
   ws.onmessage = (event) => {
@@ -59,6 +77,41 @@ export function getSocket() {
       console.error("Error parsing websocket message:", error);
     }
   };
+}
+
+function attemptReconnect() {
+  if (isReconnecting || reconnectAttempts >= maxReconnectAttempts) {
+    if (reconnectAttempts >= maxReconnectAttempts) {
+      toast.error("Unable to connect to server. Please refresh the page.");
+    }
+    return;
+  }
+
+  isReconnecting = true;
+  toast.warning("Connection lost. Attempting to reconnect...", {
+    style: {
+      background: '#FEF3C7', // yellowish background
+      color: '#92400E', // darker yellow text
+      border: '1px solid #F59E0B'
+    }
+  });
+
+  const delay = baseDelay * Math.pow(2, reconnectAttempts);
+
+  setTimeout(() => {
+    reconnectAttempts++;
+    console.log(`Reconnection attempt ${reconnectAttempts}/${maxReconnectAttempts}`);
+
+    ws = new WebSocket(getWebSocketUrl());
+    setupWebSocketHandlers();
+  }, delay);
+}
+
+export function getSocket() {
+  if (ws) return ws;
+
+  ws = new WebSocket(getWebSocketUrl());
+  setupWebSocketHandlers();
 
   return ws;
 }
@@ -75,11 +128,21 @@ export function addMessageHandler(handler: (event: MessageEvent) => void) {
   return () => messageHandlers.delete(handler);
 }
 
-export function sendMessage(message: Message) {
-  const socket = getSocket();
-  if (socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify(message));
-  } else {
-    console.error("WebSocket is not open");
-  }
+export function sendMessage(message: Message): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const socket = getSocket();
+
+    if (socket.readyState !== WebSocket.OPEN) {
+      reject(new Error('WebSocket is not connected'));
+      return;
+    }
+
+    try {
+      socket.send(JSON.stringify(message));
+      resolve();
+    } catch (error) {
+      console.error("Error sending message:", error);
+      reject(error);
+    }
+  });
 }

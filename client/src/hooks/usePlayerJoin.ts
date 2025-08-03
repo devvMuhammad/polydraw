@@ -21,7 +21,9 @@ export function usePlayerJoin() {
         playerName: playerInfo.name,
         playerEmoji: playerInfo.emoji,
       }
-    } as Message);
+    } as Message).catch(error => {
+      console.error("Failed to send join message:", error);
+    });
 
 
   }, [playerInfo]);

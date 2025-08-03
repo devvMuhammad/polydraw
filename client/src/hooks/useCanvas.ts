@@ -29,7 +29,9 @@ export function useCanvas() {
           color: selectedColor,
           strokeWidth: strokeWidth,
         },
-      } as Message);
+      } as Message).catch(error => {
+        console.error("Failed to send path:", error);
+      });
       const lastPoint = pointsBuffer.current.at(-1);
       pointsBuffer.current = lastPoint ? [lastPoint] : [];
     }
@@ -167,7 +169,9 @@ export function useCanvas() {
           playerName: playerInfo.name,
           playerEmoji: playerInfo.emoji,
         },
-      } as Message);
+      } as Message).catch(error => {
+        console.error("Failed to send clear event:", error);
+      });
     }
   };
 

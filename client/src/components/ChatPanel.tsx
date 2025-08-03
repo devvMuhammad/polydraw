@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePlayerStore } from "../stores/playerStore";
-import { getSocket, sendMessage } from "../service/websocket";
+import { sendMessage } from "../service/websocket";
 import useMessagesStore from "../stores/messagesStore";
 import type { ChatMessage, Message } from "../types";
 
@@ -9,7 +9,7 @@ export function ChatPanel() {
   const [message, setMessage] = useState("");
   const { playerInfo } = usePlayerStore();
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || !playerInfo) return;
 
@@ -21,42 +21,17 @@ export function ChatPanel() {
       timestamp: new Date(),
     }
 
-    sendMessage({
-      type: "message",
-      payload: newMessage,
-    } as Message);
-
-    setMessage("");
-  };
-
-
-
-  useEffect(() => {
-    if (!playerInfo) return;
-
-    const socket = getSocket();
-    console.log("SOCKET", socket)
-
-
-    function handleOpen() {
-      if (!playerInfo) return;
-      console.log("SENDING JOIN MESSAGE", playerInfo)
-      sendMessage({
-        type: "join",
-        payload: {
-          id: playerInfo.id,
-          playerName: playerInfo.name,
-          playerEmoji: playerInfo.emoji,
-        }
+    try {
+      await sendMessage({
+        type: "message",
+        payload: newMessage,
       } as Message);
+      setMessage("");
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      // Keep the message in the input so user can retry
     }
-
-    socket.addEventListener("open", handleOpen);
-
-    return () => {
-      socket.removeEventListener("open", handleOpen);
-    };
-  }, [playerInfo]);
+  };
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
