@@ -2,7 +2,6 @@ package internal
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/gorilla/websocket"
 )
@@ -31,35 +30,35 @@ func NewHub() *Hub {
 }
 
 func (h *Hub) Run() {
-	fmt.Println("Hub running in its goroutine")
+	LogInfo("Hub running in its goroutine")
 	for {
 		select {
 		case newConnection := <-h.Register:
-			fmt.Println("New connection registered")
+			LogInfo("New connection registered")
 			h.Players[newConnection.Conn] = newConnection
 		case disconnectedConnection := <-h.Unregister:
-			fmt.Println("Connection unregistered")
+			LogInfo("Connection unregistered")
 			delete(h.Players, disconnectedConnection.Conn)
 		case message := <-h.Broadcast:
-			fmt.Println("Broadcasting message")
+			LogDebug("Broadcasting message")
 
 			// unmarshal message
 			var messageData map[string]any
 			if err := json.Unmarshal(message, &messageData); err != nil {
-				fmt.Printf("Error unmarshalling message: %v\n", err)
+				LogError("Error unmarshalling message: %v", err)
 				continue
 			}
 
 			for conn, player := range h.Players {
 				// skip if message is a draw, path, or player join message and the player is the one who did it (handling it special for this case)
-				if messageData["type"] == "draw" || messageData["type"] == "path" || messageData["type"] == "player_join" {
+				if messageData["type"] == "draw" || messageData["type"] == "path" || messageData["type"] == "player_join" || messageData["type"] == "player_leave" {
 					playerId := messageData["payload"].(map[string]any)["id"].(string)
 					if playerId == player.Id {
 						continue
 					}
 				}
 				if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
-					fmt.Printf("Error broadcasting to connection: %v\n", err)
+					LogError("Error broadcasting to connection: %v", err)
 					// Auto cleanup on write error
 					delete(h.Players, conn)
 				}
@@ -97,7 +96,7 @@ func (h *Hub) BroadcastPlayerLeave(player *Player) {
 
 		leaveEventBytes, err := json.Marshal(leaveEventData)
 		if err != nil {
-			fmt.Printf("Error marshaling leave event: %v\n", err)
+			LogError("Error marshaling leave event: %v", err)
 			return
 		}
 
@@ -119,7 +118,7 @@ func (h *Hub) BroadcastPlayerJoin(player *Player) {
 
 		joinEventBytes, err := json.Marshal(joinEventData)
 		if err != nil {
-			fmt.Printf("Error marshaling join event: %v\n", err)
+			LogError("Error marshaling join event: %v", err)
 			return
 		}
 
@@ -145,7 +144,7 @@ func (h *Hub) BroadcastDraw(player *Player, x float64, y float64, color string, 
 
 		drawEventBytes, err := json.Marshal(drawEventData)
 		if err != nil {
-			fmt.Printf("Error marshaling draw event: %v\n", err)
+			LogError("Error marshaling draw event: %v", err)
 			return
 		}
 
@@ -173,7 +172,7 @@ func (h *Hub) BroadcastPath(player *Player, points []struct {
 
 		pathEventBytes, err := json.Marshal(pathEventData)
 		if err != nil {
-			fmt.Printf("Error marshaling path event: %v\n", err)
+			LogError("Error marshaling path event: %v", err)
 			return
 		}
 
@@ -195,7 +194,7 @@ func (h *Hub) BroadcastClear(player *Player) {
 
 		clearEventBytes, err := json.Marshal(clearEventData)
 		if err != nil {
-			fmt.Printf("Error marshaling clear event: %v\n", err)
+			LogError("Error marshaling clear event: %v", err)
 			return
 		}
 

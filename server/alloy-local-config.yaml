@@ -1,0 +1,18 @@
+local.file_match "logs" {
+  path_targets = [
+    {__path__ = "/logs/*.log"},
+  ]
+}
+
+loki.source.file "file_source" {
+  targets    = local.file_match.logs.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+	endpoint {
+		url       = "http://gateway:3100/loki/api/v1/push"
+		tenant_id = "tenant1"
+	}
+	external_labels = {}
+}

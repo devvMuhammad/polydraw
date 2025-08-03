@@ -2,7 +2,6 @@ package ws
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"server/internal"
 	"time"
@@ -91,11 +90,11 @@ func parseWebsocketMessage[T any](websocketMessage []byte) (T, error) {
 func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("Error upgrading to WebSocket:", err)
+		internal.LogError("Error upgrading to WebSocket: %v", err)
 		return
 	}
 
-	log.Println("WebSocket connection established")
+	internal.LogInfo("WebSocket connection established from %s", r.RemoteAddr)
 
 	// initialize player
 	player := internal.Player{
@@ -109,7 +108,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 	hub.Register <- &player
 
 	defer func() {
-		log.Println("Connection closing for player:", player.Id, player.PlayerName, player.PlayerEmoji)
+		internal.LogInfo("Connection closing for player: %s (%s %s)", player.Id, player.PlayerName, player.PlayerEmoji)
 		// Broadcast player leave event before unregistering
 		hub.BroadcastPlayerLeave(&player)
 		hub.Unregister <- &player
@@ -119,15 +118,16 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 	for {
 		_, websocketMessage, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Error reading message:", err)
+			internal.LogError("Error reading message: %v", err)
 			return
 		}
 
-		log.Printf("Received message: %s", websocketMessage)
+		// show received message with first 50 characters
+		internal.LogDebug("Received message: %s", string(websocketMessage[:50]))
 
 		msg, err := parseWebsocketMessage[WsMessage](websocketMessage)
 		if err != nil {
-			log.Println("Error parsing websocket message:", err)
+			internal.LogError("Error parsing websocket message: %v", err)
 			continue
 		}
 
@@ -135,11 +135,11 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 		case "join":
 			payload, err := parseWebsocketMessage[JoinMessagePayload](msg.Payload)
 			if err != nil {
-				log.Println("Error parsing join payload:", err)
+				internal.LogError("Error parsing join payload: %v", err)
 				continue
 			}
 			// fill missing data
-			log.Println("Player joined with id", payload.Id, payload.PlayerName, payload.PlayerEmoji)
+			internal.LogInfo("Player joined with id %s, name: %s, emoji: %s", payload.Id, payload.PlayerName, payload.PlayerEmoji)
 			player.Id = payload.Id
 			player.PlayerName = payload.PlayerName
 			player.PlayerEmoji = payload.PlayerEmoji
@@ -149,30 +149,32 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 		case "message":
 			payload, err := parseWebsocketMessage[MessagePayload](msg.Payload)
 			if err != nil {
-				log.Println("Error parsing message payload:", err)
+				internal.LogError("Error parsing message payload: %v", err)
 				continue
 			}
-			// log.Printf("Parsed message payload: %+v", payload)
-			log.Printf("Player Name %s just sent a message\n", payload.PlayerName)
+			internal.LogInfo("Player %s sent a message", payload.PlayerName)
 			hub.Broadcast <- websocketMessage
 		case "draw":
 			payload, err := parseWebsocketMessage[DrawMessagePayload](msg.Payload)
 			if err != nil {
-				log.Println("Error parsing draw payload:", err)
+				internal.LogError("Error parsing draw payload: %v", err)
 				continue
 			}
+			internal.LogDebug("Player %s drawing at (%f, %f)", player.PlayerName, payload.X, payload.Y)
 			hub.BroadcastDraw(&player, payload.X, payload.Y, "", 0)
 		case "path":
 			payload, err := parseWebsocketMessage[PathMessagePayload](msg.Payload)
 			if err != nil {
-				log.Println("Error parsing path payload:", err)
+				internal.LogError("Error parsing path payload: %v", err)
 				continue
 			}
+			internal.LogDebug("Player %s drawing path with %d points, color: %s, width: %f", player.PlayerName, len(payload.Points), payload.Color, payload.StrokeWidth)
 			hub.BroadcastPath(&player, payload.Points, payload.Color, payload.StrokeWidth)
 		case "clear":
+			internal.LogInfo("Player %s cleared the canvas", player.PlayerName)
 			hub.BroadcastClear(&player)
 		default:
-			log.Printf("Unknown message type: %s", msg.Type)
+			internal.LogWarning("Unknown message type: %s", msg.Type)
 		}
 	}
 }
@@ -190,7 +192,7 @@ func HandleGetPlayers(w http.ResponseWriter, r *http.Request, hub *internal.Hub)
 
 	players := hub.GetActivePlayers()
 	if err := json.NewEncoder(w).Encode(players); err != nil {
-		log.Println("Error encoding players response:", err)
+		internal.LogError("Error encoding players response: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { getSocket, sendMessage } from "../service/websocket";
 import { usePlayerStore } from "../stores/playerStore";
 import type { Message } from "../types";
+const socket = getSocket();
 
 export function usePlayerJoin() {
   const { playerInfo } = usePlayerStore();
@@ -9,8 +10,9 @@ export function usePlayerJoin() {
   useEffect(() => {
     if (!playerInfo) return;
 
-    const socket = getSocket();
-
+    console.log("SOCKET", socket)
+    console.log("READY STATE", socket.readyState)
+    console.log("OPEN NUMBER", WebSocket.OPEN)
     if (socket.readyState !== WebSocket.OPEN) return;
 
     console.log("SENDING JOIN MESSAGE", playerInfo)
