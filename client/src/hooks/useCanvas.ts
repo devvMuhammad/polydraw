@@ -28,7 +28,8 @@ export function useCanvas() {
           playerEmoji: playerInfo.emoji,
         },
       } as Message);
-      pointsBuffer.current = [];
+      const lastPoint = pointsBuffer.current.at(-1);
+      pointsBuffer.current = lastPoint ? [lastPoint] : [];
     }
   }, [playerInfo]);
 
@@ -58,6 +59,7 @@ export function useCanvas() {
       ctx.beginPath();
       ctx.moveTo(coords.x, coords.y);
       setIsDrawing(true);
+      pointsBuffer.current = [coords];
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -83,7 +85,8 @@ export function useCanvas() {
 
       // Flush any pending throttled calls and send remaining buffered points immediately
       sendPathThrottled.flush();
-      sendPath();
+      // sendPath(); 
+      pointsBuffer.current = [];
     };
 
     function handleDraw(event: MessageEvent) {
@@ -100,6 +103,12 @@ export function useCanvas() {
         if (payload.points.length > 0) {
           ctx.beginPath();
           ctx.moveTo(payload.points[0].x, payload.points[0].y);
+          if (payload.points.length === 1) {
+            // Draw a dot for a single point
+            ctx.fillStyle = selectedColor;
+            ctx.arc(payload.points[0].x, payload.points[0].y, strokeWidth / 2, 0, 2 * Math.PI);
+            ctx.fill();
+          }
           for (let i = 1; i < payload.points.length; i++) {
             ctx.lineTo(payload.points[i].x, payload.points[i].y);
           }
@@ -124,7 +133,7 @@ export function useCanvas() {
       // Cancel any pending throttled calls
       sendPathThrottled.cancel();
     };
-  }, [isDrawing, selectedColor, strokeWidth, sendPathThrottled, sendPath]);
+  }, [isDrawing, selectedColor, strokeWidth, sendPathThrottled]);
 
   const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> => {
     return new Promise((resolve, reject) => {
