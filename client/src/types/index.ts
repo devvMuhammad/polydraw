@@ -38,6 +38,15 @@ export type Message = {
         id: string;
         playerName: string;
         playerEmoji: string;
+        color: string;
+        strokeWidth: number;
+    }
+} | {
+    type: "clear";
+    payload: {
+        id: string;
+        playerName: string;
+        playerEmoji: string;
     }
 };
 

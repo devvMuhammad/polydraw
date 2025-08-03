@@ -26,12 +26,14 @@ export function useCanvas() {
           id: playerInfo.id,
           playerName: playerInfo.name,
           playerEmoji: playerInfo.emoji,
+          color: selectedColor,
+          strokeWidth: strokeWidth,
         },
       } as Message);
       const lastPoint = pointsBuffer.current.at(-1);
       pointsBuffer.current = lastPoint ? [lastPoint] : [];
     }
-  }, [playerInfo]);
+  }, [playerInfo, selectedColor, strokeWidth]);
 
   // Throttled version that sends buffered points every 100ms
   const sendPathThrottled = useCallback(
@@ -83,9 +85,6 @@ export function useCanvas() {
       ctx.closePath();
       setIsDrawing(false);
 
-      // Flush any pending throttled calls and send remaining buffered points immediately
-      sendPathThrottled.flush();
-      // sendPath(); 
       pointsBuffer.current = [];
     };
 
@@ -101,19 +100,27 @@ export function useCanvas() {
       } else if (data.type === "path" && ctx) {
         const payload = data.payload;
         if (payload.points.length > 0) {
+          ctx.save();
+          ctx.strokeStyle = payload.color;
+          ctx.lineWidth = payload.strokeWidth;
+
           ctx.beginPath();
           ctx.moveTo(payload.points[0].x, payload.points[0].y);
           if (payload.points.length === 1) {
             // Draw a dot for a single point
-            ctx.fillStyle = selectedColor;
-            ctx.arc(payload.points[0].x, payload.points[0].y, strokeWidth / 2, 0, 2 * Math.PI);
+            ctx.fillStyle = payload.color;
+            ctx.arc(payload.points[0].x, payload.points[0].y, payload.strokeWidth / 2, 0, 2 * Math.PI);
             ctx.fill();
           }
           for (let i = 1; i < payload.points.length; i++) {
             ctx.lineTo(payload.points[i].x, payload.points[i].y);
           }
           ctx.stroke();
+          ctx.restore();
         }
+      } else if (data.type === "clear" && ctx && canvas) {
+        // Clear the canvas when receiving a clear event
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
 
@@ -133,7 +140,7 @@ export function useCanvas() {
       // Cancel any pending throttled calls
       sendPathThrottled.cancel();
     };
-  }, [isDrawing, selectedColor, strokeWidth, sendPathThrottled]);
+  }, [isDrawing, playerInfo, selectedColor, strokeWidth, sendPathThrottled]);
 
   const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> => {
     return new Promise((resolve, reject) => {
@@ -150,6 +157,18 @@ export function useCanvas() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Broadcast clear event to all clients
+    if (playerInfo) {
+      sendMessage({
+        type: "clear",
+        payload: {
+          id: playerInfo.id,
+          playerName: playerInfo.name,
+          playerEmoji: playerInfo.emoji,
+        },
+      } as Message);
+    }
   };
 
   const copyCanvas = async () => {

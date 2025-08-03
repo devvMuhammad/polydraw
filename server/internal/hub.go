@@ -127,7 +127,7 @@ func (h *Hub) BroadcastPlayerJoin(player *Player) {
 	}
 }
 
-func (h *Hub) BroadcastDraw(player *Player, x float64, y float64) {
+func (h *Hub) BroadcastDraw(player *Player, x float64, y float64, color string, strokeWidth float64) {
 	if player.Id != "" && player.PlayerName != "" && player.PlayerEmoji != "" {
 		// Create draw event
 		drawEventData := map[string]any{
@@ -138,6 +138,8 @@ func (h *Hub) BroadcastDraw(player *Player, x float64, y float64) {
 				"playerEmoji": player.PlayerEmoji,
 				"x":           x,
 				"y":           y,
+				"color":       color,
+				"strokeWidth": strokeWidth,
 			},
 		}
 
@@ -154,7 +156,7 @@ func (h *Hub) BroadcastDraw(player *Player, x float64, y float64) {
 func (h *Hub) BroadcastPath(player *Player, points []struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
-}) {
+}, color string, strokeWidth float64) {
 	if player.Id != "" && player.PlayerName != "" && player.PlayerEmoji != "" {
 		// Create path event
 		pathEventData := map[string]any{
@@ -164,6 +166,8 @@ func (h *Hub) BroadcastPath(player *Player, points []struct {
 				"playerName":  player.PlayerName,
 				"playerEmoji": player.PlayerEmoji,
 				"points":      points,
+				"color":       color,
+				"strokeWidth": strokeWidth,
 			},
 		}
 
@@ -174,5 +178,27 @@ func (h *Hub) BroadcastPath(player *Player, points []struct {
 		}
 
 		h.Broadcast <- pathEventBytes
+	}
+}
+
+func (h *Hub) BroadcastClear(player *Player) {
+	if player.Id != "" && player.PlayerName != "" && player.PlayerEmoji != "" {
+		// Create clear event
+		clearEventData := map[string]any{
+			"type": "clear",
+			"payload": map[string]any{
+				"id":          player.Id,
+				"playerName":  player.PlayerName,
+				"playerEmoji": player.PlayerEmoji,
+			},
+		}
+
+		clearEventBytes, err := json.Marshal(clearEventData)
+		if err != nil {
+			fmt.Printf("Error marshaling clear event: %v\n", err)
+			return
+		}
+
+		h.Broadcast <- clearEventBytes
 	}
 }
