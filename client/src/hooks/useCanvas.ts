@@ -1,8 +1,8 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { getSocket, sendMessage } from "../service/websocket";
 import type { Message } from "../types";
 import { usePlayerStore } from "../stores/playerStore";
-import throttle from 'lodash/throttle';
+import { throttle } from "lodash";
 
 
 const socket = getSocket();
@@ -13,6 +13,30 @@ export function useCanvas() {
   const [selectedColor, setSelectedColor] = useState("#FF6B6B");
   const [strokeWidth, setStrokeWidth] = useState(5);
   const { playerInfo } = usePlayerStore();
+
+  // Buffering for path drawing
+  const pointsBuffer = useRef<{ x: number; y: number }[]>([]);
+
+  const sendPath = useCallback(() => {
+    if (pointsBuffer.current.length > 0 && playerInfo) {
+      sendMessage({
+        type: "path",
+        payload: {
+          points: [...pointsBuffer.current],
+          id: playerInfo.id,
+          playerName: playerInfo.name,
+          playerEmoji: playerInfo.emoji,
+        },
+      } as Message);
+      pointsBuffer.current = [];
+    }
+  }, [playerInfo]);
+
+  // Throttled version that sends buffered points every 100ms
+  const sendPathThrottled = useCallback(
+    throttle(sendPath, 150),
+    [sendPath]
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -33,23 +57,8 @@ export function useCanvas() {
       };
       ctx.beginPath();
       ctx.moveTo(coords.x, coords.y);
-      // ctx.stroke();
       setIsDrawing(true);
     };
-
-    const sendDrawMessageThrottled = throttle((coords: { x: number; y: number }) => {
-      if (!playerInfo) return;
-      sendMessage({
-        type: "draw",
-        payload: {
-          x: coords.x,
-          y: coords.y,
-          id: playerInfo.id,
-          playerName: playerInfo.name,
-          playerEmoji: playerInfo.emoji,
-        },
-      } as Message);
-    }, 0);
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDrawing || !playerInfo) return;
@@ -61,25 +70,41 @@ export function useCanvas() {
 
       ctx.lineTo(coords.x, coords.y);
       ctx.stroke();
-      // throttle the message sending sending using loadash
-      sendDrawMessageThrottled(coords);
+
+      // Buffer the point and trigger throttled send
+      pointsBuffer.current.push(coords);
+      sendPathThrottled();
     };
 
     const handleMouseUp = () => {
       if (!isDrawing) return;
       ctx.closePath();
       setIsDrawing(false);
+
+      // Flush any pending throttled calls and send remaining buffered points immediately
+      sendPathThrottled.flush();
+      sendPath();
     };
 
     function handleDraw(event: MessageEvent) {
       const data = JSON.parse(event.data) as Message;
       console.log("Draw event", data);
+
       if (data.type === "draw" && ctx) {
         const payload = data.payload;
-        ctx.beginPath();
+        ctx.moveTo(payload.x, payload.y);
         ctx.lineTo(payload.x, payload.y);
         ctx.stroke();
-        // ctx.moveTo(payload.x, payload.y);
+      } else if (data.type === "path" && ctx) {
+        const payload = data.payload;
+        if (payload.points.length > 0) {
+          ctx.beginPath();
+          ctx.moveTo(payload.points[0].x, payload.points[0].y);
+          for (let i = 1; i < payload.points.length; i++) {
+            ctx.lineTo(payload.points[i].x, payload.points[i].y);
+          }
+          ctx.stroke();
+        }
       }
     }
 
@@ -95,8 +120,11 @@ export function useCanvas() {
       canvas.removeEventListener("mouseup", handleMouseUp);
       canvas.removeEventListener("mouseleave", handleMouseUp);
       socket.removeEventListener("message", handleDraw);
+
+      // Cancel any pending throttled calls
+      sendPathThrottled.cancel();
     };
-  }, [isDrawing, selectedColor, strokeWidth]);
+  }, [isDrawing, selectedColor, strokeWidth, sendPathThrottled, sendPath]);
 
   const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> => {
     return new Promise((resolve, reject) => {

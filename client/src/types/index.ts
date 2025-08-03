@@ -31,6 +31,14 @@ export type Message = {
         playerName: string;
         playerEmoji: string;
     }
+} | {
+    type: "path";
+    payload: {
+        points: { x: number; y: number }[];
+        id: string;
+        playerName: string;
+        playerEmoji: string;
+    }
 };
 
 export interface ChatMessage {

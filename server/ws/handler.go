@@ -40,6 +40,13 @@ type DrawMessagePayload struct {
 	Y float64 `json:"y"`
 }
 
+type PathMessagePayload struct {
+	Points []struct {
+		X float64 `json:"x"`
+		Y float64 `json:"y"`
+	} `json:"points"`
+}
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	CheckOrigin:     func(r *http.Request) bool { return true },
@@ -128,6 +135,13 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 				continue
 			}
 			hub.BroadcastDraw(&player, payload.X, payload.Y)
+		case "path":
+			payload, err := parseWebsocketMessage[PathMessagePayload](msg.Payload)
+			if err != nil {
+				log.Println("Error parsing path payload:", err)
+				continue
+			}
+			hub.BroadcastPath(&player, payload.Points)
 		default:
 			log.Printf("Unknown message type: %s", msg.Type)
 		}

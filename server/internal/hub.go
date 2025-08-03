@@ -51,8 +51,8 @@ func (h *Hub) Run() {
 			}
 
 			for conn, player := range h.Players {
-				// skip if message is a draw message or player join message and the player is the one who did it (handling it special for this case)
-				if messageData["type"] == "draw" || messageData["type"] == "player_join" {
+				// skip if message is a draw, path, or player join message and the player is the one who did it (handling it special for this case)
+				if messageData["type"] == "draw" || messageData["type"] == "path" || messageData["type"] == "player_join" {
 					playerId := messageData["payload"].(map[string]any)["id"].(string)
 					if playerId == player.Id {
 						continue
@@ -148,5 +148,31 @@ func (h *Hub) BroadcastDraw(player *Player, x float64, y float64) {
 		}
 
 		h.Broadcast <- drawEventBytes
+	}
+}
+
+func (h *Hub) BroadcastPath(player *Player, points []struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}) {
+	if player.Id != "" && player.PlayerName != "" && player.PlayerEmoji != "" {
+		// Create path event
+		pathEventData := map[string]any{
+			"type": "path",
+			"payload": map[string]any{
+				"id":          player.Id,
+				"playerName":  player.PlayerName,
+				"playerEmoji": player.PlayerEmoji,
+				"points":      points,
+			},
+		}
+
+		pathEventBytes, err := json.Marshal(pathEventData)
+		if err != nil {
+			fmt.Printf("Error marshaling path event: %v\n", err)
+			return
+		}
+
+		h.Broadcast <- pathEventBytes
 	}
 }
