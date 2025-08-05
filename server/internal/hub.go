@@ -36,9 +36,17 @@ func (h *Hub) Run() {
 		case newConnection := <-h.Register:
 			LogInfo("New connection registered")
 			h.Players[newConnection.Conn] = newConnection
+			// Update active players count (this includes connections that haven't completed join)
+			SetActivePlayersCount(float64(len(h.GetActivePlayers())))
 		case disconnectedConnection := <-h.Unregister:
 			LogInfo("Connection unregistered")
+			// Check if this was a fully joined player before deletion
+			if disconnectedConnection.Id != "" && disconnectedConnection.PlayerName != "" && disconnectedConnection.PlayerEmoji != "" {
+				IncrementPlayerLeft()
+			}
 			delete(h.Players, disconnectedConnection.Conn)
+			// Update active players count
+			SetActivePlayersCount(float64(len(h.GetActivePlayers())))
 		case message := <-h.Broadcast:
 			LogDebug("Broadcasting message")
 
@@ -59,8 +67,11 @@ func (h *Hub) Run() {
 				}
 				if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
 					LogError("Error broadcasting to connection: %v", err)
+					IncrementWebSocketError("broadcast_failed")
 					// Auto cleanup on write error
 					delete(h.Players, conn)
+				} else {
+					IncrementWebSocketMessageSent()
 				}
 			}
 		}

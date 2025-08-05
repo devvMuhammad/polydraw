@@ -36,6 +36,7 @@ func InitLogger() error {
 func LogInfo(format string, v ...interface{}) {
 	if Logger != nil {
 		Logger.Printf("[INFO] "+format, v...)
+		IncrementLogMessage("info")
 	}
 }
 
@@ -43,6 +44,7 @@ func LogInfo(format string, v ...interface{}) {
 func LogError(format string, v ...interface{}) {
 	if Logger != nil {
 		Logger.Printf("[ERROR] "+format, v...)
+		IncrementLogMessage("error")
 	}
 }
 
@@ -50,6 +52,7 @@ func LogError(format string, v ...interface{}) {
 func LogWarning(format string, v ...interface{}) {
 	if Logger != nil {
 		Logger.Printf("[WARN] "+format, v...)
+		IncrementLogMessage("warning")
 	}
 }
 
@@ -57,5 +60,6 @@ func LogWarning(format string, v ...interface{}) {
 func LogDebug(format string, v ...interface{}) {
 	if Logger != nil {
 		Logger.Printf("[DEBUG] "+format, v...)
+		IncrementLogMessage("debug")
 	}
 }

@@ -41,5 +41,8 @@ ruler:
     s3:
       bucketnames: loki-ruler
 
+limits_config:
+  volume_enabled: true
+
 compactor:
   working_directory: /tmp/compactor

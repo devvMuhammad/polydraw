@@ -202,6 +202,15 @@ services:
     networks:
       - loki
   
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./.data/prometheus:/prometheus  
+    networks:
+      - loki
 
   flog:
     image: mingrammer/flog

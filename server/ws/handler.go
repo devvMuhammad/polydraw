@@ -91,10 +91,12 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		internal.LogError("Error upgrading to WebSocket: %v", err)
+		internal.IncrementWebSocketError("upgrade_failed")
 		return
 	}
 
 	internal.LogInfo("WebSocket connection established from %s", r.RemoteAddr)
+	internal.IncrementWebSocketConnection()
 
 	// initialize player
 	player := internal.Player{
@@ -112,6 +114,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 		// Broadcast player leave event before unregistering
 		hub.BroadcastPlayerLeave(&player)
 		hub.Unregister <- &player
+		internal.DecrementWebSocketConnection()
 		conn.Close()
 	}()
 
@@ -119,6 +122,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 		_, websocketMessage, err := conn.ReadMessage()
 		if err != nil {
 			internal.LogError("Error reading message: %v", err)
+			internal.IncrementWebSocketError("read_failed")
 			return
 		}
 
@@ -128,14 +132,19 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 		msg, err := parseWebsocketMessage[WsMessage](websocketMessage)
 		if err != nil {
 			internal.LogError("Error parsing websocket message: %v", err)
+			internal.IncrementWebSocketError("parse_failed")
 			continue
 		}
+
+		// Track received message by type
+		internal.IncrementWebSocketMessage(msg.Type)
 
 		switch msg.Type {
 		case "join":
 			payload, err := parseWebsocketMessage[JoinMessagePayload](msg.Payload)
 			if err != nil {
 				internal.LogError("Error parsing join payload: %v", err)
+				internal.IncrementWebSocketError("parse_failed")
 				continue
 			}
 			// fill missing data
@@ -144,12 +153,14 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 			player.PlayerName = payload.PlayerName
 			player.PlayerEmoji = payload.PlayerEmoji
 
+			internal.IncrementPlayerJoined()
 			hub.BroadcastPlayerJoin(&player)
 
 		case "message":
 			payload, err := parseWebsocketMessage[MessagePayload](msg.Payload)
 			if err != nil {
 				internal.LogError("Error parsing message payload: %v", err)
+				internal.IncrementWebSocketError("parse_failed")
 				continue
 			}
 			internal.LogInfo("Player %s sent a message", payload.PlayerName)
@@ -158,20 +169,26 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 			payload, err := parseWebsocketMessage[DrawMessagePayload](msg.Payload)
 			if err != nil {
 				internal.LogError("Error parsing draw payload: %v", err)
+				internal.IncrementWebSocketError("parse_failed")
 				continue
 			}
 			internal.LogDebug("Player %s drawing at (%f, %f)", player.PlayerName, payload.X, payload.Y)
+			internal.IncrementDrawEvent()
 			hub.BroadcastDraw(&player, payload.X, payload.Y, "", 0)
 		case "path":
 			payload, err := parseWebsocketMessage[PathMessagePayload](msg.Payload)
 			if err != nil {
 				internal.LogError("Error parsing path payload: %v", err)
+				internal.IncrementWebSocketError("parse_failed")
 				continue
 			}
 			internal.LogDebug("Player %s drawing path with %d points, color: %s, width: %f", player.PlayerName, len(payload.Points), payload.Color, payload.StrokeWidth)
+			internal.IncrementPathEvent()
+			internal.AddPathPoints(float64(len(payload.Points)))
 			hub.BroadcastPath(&player, payload.Points, payload.Color, payload.StrokeWidth)
 		case "clear":
 			internal.LogInfo("Player %s cleared the canvas", player.PlayerName)
+			internal.IncrementClearEvent()
 			hub.BroadcastClear(&player)
 		default:
 			internal.LogWarning("Unknown message type: %s", msg.Type)

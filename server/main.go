@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"server/internal"
 	"server/ws"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const PORT = ":8080"
@@ -21,18 +23,24 @@ func main() {
 
 	// hub runs in its own goroutine
 	go hub.Run()
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+	// Add Prometheus metrics endpoint
+	http.Handle("/metrics", promhttp.Handler())
+
+	http.HandleFunc("/", internal.InstrumentedHandler("/", func(w http.ResponseWriter, r *http.Request) {
 		internal.LogDebug("Serving index.html to %s", r.RemoteAddr)
 		http.ServeFile(w, r, "html/index.html")
-	})
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+	}))
+
+	http.HandleFunc("/ws", internal.InstrumentedHandler("/ws", func(w http.ResponseWriter, r *http.Request) {
 		internal.LogDebug("WebSocket connection request from %s", r.RemoteAddr)
 		ws.HandleWebSocket(w, r, hub)
-	})
-	http.HandleFunc("/players", func(w http.ResponseWriter, r *http.Request) {
+	}))
+
+	http.HandleFunc("/players", internal.InstrumentedHandler("/players", func(w http.ResponseWriter, r *http.Request) {
 		internal.LogDebug("Players list request from %s", r.RemoteAddr)
 		ws.HandleGetPlayers(w, r, hub)
-	})
+	}))
 
 	internal.LogInfo("Server is running on port %s", PORT)
 	err := http.ListenAndServe(PORT, nil)
