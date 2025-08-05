@@ -121,8 +121,13 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 	for {
 		_, websocketMessage, err := conn.ReadMessage()
 		if err != nil {
-			internal.LogError("Error reading message: %v", err)
-			internal.IncrementWebSocketError("read_failed")
+			// Check if this is a normal connection close
+			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived) {
+				internal.LogInfo("WebSocket connection closed normally: %v", err)
+			} else {
+				internal.LogError("Error reading message: %v", err)
+				internal.IncrementWebSocketError("read_failed")
+			}
 			return
 		}
 
@@ -163,7 +168,8 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, hub *internal.Hub) 
 				internal.IncrementWebSocketError("parse_failed")
 				continue
 			}
-			internal.LogInfo("Player %s sent a message", payload.PlayerName)
+			internal.LogInfo("Player %s sent a chat message", payload.PlayerName)
+			internal.IncrementChatMessage()
 			hub.Broadcast <- websocketMessage
 		case "draw":
 			payload, err := parseWebsocketMessage[DrawMessagePayload](msg.Payload)

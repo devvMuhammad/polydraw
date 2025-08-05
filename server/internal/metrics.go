@@ -93,6 +93,13 @@ var (
 		},
 	)
 
+	ChatMessagesTotal = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "polydraw_chat_messages_total",
+			Help: "Total number of chat messages sent",
+		},
+	)
+
 	PathEventsTotal = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Name: "polydraw_path_events_total",
@@ -177,6 +184,10 @@ func IncrementPlayerLeft() {
 
 func IncrementDrawEvent() {
 	DrawEventsTotal.Inc()
+}
+
+func IncrementChatMessage() {
+	ChatMessagesTotal.Inc()
 }
 
 func IncrementPathEvent() {
