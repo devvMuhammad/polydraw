@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useCanvas } from "../hooks/useCanvas";
 import { Toolbar } from "../components/Toolbar";
 import { CurrentSelection } from "../components/CurrentSelection";

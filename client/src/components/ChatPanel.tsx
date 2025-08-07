@@ -3,6 +3,7 @@ import { usePlayerStore } from "../stores/playerStore";
 import { sendMessage } from "../service/websocket";
 import useMessagesStore from "../stores/messagesStore";
 import type { ChatMessage, Message } from "../types";
+import { toast } from "sonner";
 
 export function ChatPanel() {
   const { messages } = useMessagesStore();
@@ -29,7 +30,7 @@ export function ChatPanel() {
       setMessage("");
     } catch (error) {
       console.error("Failed to send message:", error);
-      // Keep the message in the input so user can retry
+      toast.error(error instanceof Error ? error.message : "Failed to send message");
     }
   };
 
