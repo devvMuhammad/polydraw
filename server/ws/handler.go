@@ -58,25 +58,7 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		origin := r.Header.Get("Origin")
-		// Allow localhost development and production domains
-		allowedOrigins := []string{
-			"http://localhost:5173",  // Vite dev server
-			"http://localhost:3000",  // Alternative dev port
-			"https://localhost:5173", // HTTPS dev
-			"http://localhost:6969",
-		}
-
-		for _, allowed := range allowedOrigins {
-			if origin == allowed {
-				return true
-			}
-		}
-
-		// For production, you should replace this with your actual domain
-		// return origin == "https://yourdomain.com"
-
-		return false
+		return true
 	},
 }
 
