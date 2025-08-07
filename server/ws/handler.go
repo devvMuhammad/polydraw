@@ -64,6 +64,7 @@ var upgrader = websocket.Upgrader{
 			"http://localhost:5173",  // Vite dev server
 			"http://localhost:3000",  // Alternative dev port
 			"https://localhost:5173", // HTTPS dev
+			"http://localhost:6969",
 		}
 
 		for _, allowed := range allowedOrigins {
