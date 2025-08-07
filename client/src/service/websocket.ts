@@ -93,7 +93,8 @@ function attemptReconnect() {
       background: '#FEF3C7', // yellowish background
       color: '#92400E', // darker yellow text
       border: '1px solid #F59E0B'
-    }
+    },
+    duration: 10000
   });
 
   const delay = baseDelay * Math.pow(2, reconnectAttempts);
