@@ -74,6 +74,10 @@ export function useCanvas() {
         y: e.clientY - rect.top,
       };
 
+      // Draw this segment independently to avoid interference from other users' beginPath calls
+      const previousPoint = pointsBuffer.current.at(-1) || coords;
+      ctx.beginPath();
+      ctx.moveTo(previousPoint.x, previousPoint.y);
       ctx.lineTo(coords.x, coords.y);
       ctx.stroke();
 
@@ -84,9 +88,10 @@ export function useCanvas() {
 
     const handleMouseUp = () => {
       if (!isDrawing) return;
-      ctx.closePath();
       setIsDrawing(false);
 
+      // Flush any remaining buffered points so the last segment isn't lost for other clients
+      sendPathThrottled.flush();
       pointsBuffer.current = [];
     };
 
@@ -96,6 +101,7 @@ export function useCanvas() {
 
       if (data.type === "draw" && ctx) {
         const payload = data.payload;
+        ctx.beginPath();
         ctx.moveTo(payload.x, payload.y);
         ctx.lineTo(payload.x, payload.y);
         ctx.stroke();

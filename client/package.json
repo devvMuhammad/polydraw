@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:sim": "node ./scripts/simulate-draw.js"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.11",
@@ -22,6 +23,7 @@
     "zustand": "^5.0.7"
   },
   "devDependencies": {
+    "puppeteer": "^23.7.1",
     "@eslint/js": "^9.29.0",
     "@types/lodash": "^4.17.20",
     "@types/react": "^19.1.8",
