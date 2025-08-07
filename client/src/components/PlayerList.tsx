@@ -3,7 +3,7 @@ import { usePlayerStore } from "../stores/playerStore";
 import useActivePlayersStore from "../stores/activePlayersStore";
 import { PlayerListSkeleton } from "./PlayerListSkeleton";
 
-const BASE_URL = (window.location.hostname + ':8080');
+const BASE_URL = "http://" + (window.location.hostname + ':8080');
 
 export function PlayerList() {
   const { playerInfo } = usePlayerStore();
