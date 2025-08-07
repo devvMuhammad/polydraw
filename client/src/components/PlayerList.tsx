@@ -3,6 +3,8 @@ import { usePlayerStore } from "../stores/playerStore";
 import useActivePlayersStore from "../stores/activePlayersStore";
 import { PlayerListSkeleton } from "./PlayerListSkeleton";
 
+const BASE_URL = (window.location.hostname + ':8080');
+
 export function PlayerList() {
   const { playerInfo } = usePlayerStore();
   const { activePlayers, setActivePlayers } = useActivePlayersStore();
@@ -12,7 +14,7 @@ export function PlayerList() {
     // Fetch active players on component mount
     const fetchActivePlayers = async () => {
       try {
-        const response = await fetch("http://localhost:8080/players");
+        const response = await fetch(`${BASE_URL}/players`);
         if (response.ok) {
           const players = await response.json();
           setActivePlayers(players || []);
